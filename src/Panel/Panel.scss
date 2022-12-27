@@ -1,3 +1,4 @@
+// Required for variable references styling e.g. $fontSizeM
 @import "node_modules/azure-devops-ui/Core/_platformCommon.scss";
 
 #root {
@@ -6,6 +7,7 @@
     display: flex;
 }
 
+// Required to override style when dropdown item is disabled
 .ms-Icon--GitLogo {
     color: #f05133;
 }
