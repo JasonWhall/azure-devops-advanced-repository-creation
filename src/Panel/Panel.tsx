@@ -1,5 +1,7 @@
 import "./Panel.scss";
 import { showRootComponent } from "../Common";
+import { createRepository, initializeRepository } from "../Services";
+
 import {
     LoadingSpinner,
     GitRepoDropdown,
@@ -25,15 +27,13 @@ import { ButtonGroup } from "azure-devops-ui/ButtonGroup";
 // Used to display Error message on failures
 import { MessageCard, MessageCardSeverity } from "azure-devops-ui/MessageCard";
 
-import { GitRestClient } from "azure-devops-extension-api/Git/GitClient";
-import { GitRepositoryCreateOptions } from "azure-devops-extension-api/Git"
-
 import {
     CommonServiceIds,
-    getClient,
     IHostNavigationService,
-    IProjectPageService
 } from "azure-devops-extension-api";
+
+import { IListBoxItem } from "azure-devops-ui/ListBox";
+import { Icon } from "azure-devops-ui/Icon";
 
 interface IPanelContentState {
     repoName: string;
@@ -41,28 +41,27 @@ interface IPanelContentState {
     errorOnCreate: boolean;
     errorMessage?: string;
     createReadme: boolean;
+    gitIgnoreSelection: string;
+    defaultBranch: string;
 }
 
 class RepoPanelContent extends React.Component<{}, IPanelContentState> {
 
-    private repoClient: GitRestClient;
-
     constructor(props: {}) {
         super(props);
+
         this.state = {
             repoName: "",
             loading: false,
             errorOnCreate: false,
             createReadme: true,
+            gitIgnoreSelection: "",
+            defaultBranch: "main" // TODO: Determine from project settings
         };
-
-        this.repoClient = getClient(GitRestClient)
     }
 
     public async componentDidMount() {
         SDK.init();
-
-        SDK.ready();
     }
 
     public render(): JSX.Element {
@@ -72,7 +71,10 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
                 {this.state.loading && <LoadingSpinner label="Repository creation in progress ..." />}
                 {this.state.errorOnCreate &&
                     // @ts-expect-error MessageCardProps type incorrectly does not allow children
-                    <MessageCard severity={MessageCardSeverity.Error} onDismiss={() => this.dismissMessageCard()}>
+                    <MessageCard
+                        severity={MessageCardSeverity.Error}
+                        onDismiss={() => this.setState({ errorOnCreate: false })}
+                    >
                         {this.state.errorMessage}
                     </MessageCard>
                 }
@@ -92,11 +94,19 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
                             disabled={this.state.loading}
                             onChange={(e, checked) => (this.setState({ createReadme: checked }))}
                         />
-                        <GitignoreDropdown />
-
+                        <GitignoreDropdown
+                            onSelect={(e, item) => this.setGitignoreSelection(item)}
+                        />
                         {/* TODO: Wire up */}
                         <RepoIdentityPicker label="Maintainers" />
                         <RepoIdentityPicker label="External Collaborators" />
+                        {
+                            (this.state.createReadme || this.state.gitIgnoreSelection) &&
+                            <span className="margin-16">
+                                Your repository will be initialized with a <Icon iconName="OpenSource"></Icon><code>{this.state.defaultBranch}</code> branch.
+                            </span>
+
+                        }
                     </div>
                 </PanelContent>
                 <PanelFooter>
@@ -108,7 +118,7 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
                         <Button
                             primary={true}
                             text="Create"
-                            onClick={() => this.createRepo()}
+                            onClick={() => this.create()}
                             disabled={this.state.repoName.length < 1 || this.state.loading}
                         />
                     </ButtonGroup>
@@ -117,14 +127,15 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
         );
     }
 
-    private async createRepo(): Promise<void> {
+    private async create(): Promise<void> {
         this.setState({ loading: true });
-        const createOptions = await this.getRepoCreateOptions(this.state.repoName);
 
         try {
-            const repositoryResult = await this.repoClient.createRepository(createOptions, createOptions.project.id);
+            const repository = await createRepository(this.state.repoName);
+            await initializeRepository(repository, this.state.createReadme, this.state.gitIgnoreSelection)
+
             this.setState({ loading: false });
-            await this.finalise(repositoryResult.webUrl);
+            await this.finalise(repository.webUrl);
         }
         catch (err) {
             let message = "Unable to create repository";
@@ -139,30 +150,15 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
         }
     }
 
-    private async createInitialCommit(createReadme: boolean, gitignoreTemplate?: string): Promise<void> {
-        //TODO: Create README and .gitignore initial commit from template
+    private setGitignoreSelection(item: IListBoxItem<{}>): void {
+        let gitIgnore = "";
+
+        if (item.text != "None") {
+            gitIgnore = item.text || "";
+        }
+
+        this.setState({ gitIgnoreSelection: gitIgnore })
     }
-
-    private async getRepoCreateOptions(repoName: string): Promise<GitRepositoryCreateOptions> {
-
-        const projectService = await SDK.getService<IProjectPageService>(CommonServiceIds.ProjectPageService);
-        const project = await projectService.getProject();
-
-        /**
-         * Get an existing repo within the project for repository creation supplemental info,
-         * this is required for GitRepositoryCreateOptions interface even though it is not strictly necessary for the API call.
-         */
-        const repos = await this.repoClient.getRepositories(project?.id) // Always returns at least 1 repo as is a requirement in a project
-        return {
-            name: repoName,
-            parentRepository: repos[0].parentRepository,
-            project: repos[0].project
-        } as GitRepositoryCreateOptions;
-    }
-
-    private dismissMessageCard(): void {
-        this.setState({ errorOnCreate: false })
-    };
 
     private async finalise(redirectUrl?: string): Promise<void> {
         if (redirectUrl) {
