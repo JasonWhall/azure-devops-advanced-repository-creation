@@ -1,6 +1,11 @@
 import "./Panel.scss";
 import { showRootComponent } from "../Common";
-import { LoadingSpinner, GitRepoDropdown, RepoIdentityPicker } from "../Components";
+import {
+    LoadingSpinner,
+    GitRepoDropdown,
+    RepoIdentityPicker,
+    GitignoreDropdown
+} from "../Components";
 
 import * as React from "react";
 import * as SDK from "azure-devops-extension-sdk";
@@ -10,6 +15,8 @@ import { PanelFooter, PanelContent } from "azure-devops-ui/Panel";
 
 // Text Fields for inputs
 import { TextField, TextFieldWidth } from "azure-devops-ui/TextField";
+
+import { Checkbox } from "azure-devops-ui/Checkbox"
 
 // Buttons for create/cancel
 import { Button } from "azure-devops-ui/Button";
@@ -33,6 +40,7 @@ interface IPanelContentState {
     loading: boolean; // Used to display spinner and lock submission
     errorOnCreate: boolean;
     errorMessage?: string;
+    createReadme: boolean;
 }
 
 class RepoPanelContent extends React.Component<{}, IPanelContentState> {
@@ -45,6 +53,7 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
             repoName: "",
             loading: false,
             errorOnCreate: false,
+            createReadme: true,
         };
 
         this.repoClient = getClient(GitRestClient)
@@ -77,6 +86,14 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
                             width={TextFieldWidth.auto}
                             label="Repository name *"
                         />
+                        <Checkbox
+                            label="Add a README"
+                            checked={this.state.createReadme}
+                            disabled={this.state.loading}
+                            onChange={(e, checked) => (this.setState({ createReadme: checked }))}
+                        />
+                        <GitignoreDropdown />
+
                         {/* TODO: Wire up */}
                         <RepoIdentityPicker label="Maintainers" />
                         <RepoIdentityPicker label="External Collaborators" />
@@ -109,9 +126,9 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
             this.setState({ loading: false });
             await this.finalise(repositoryResult.webUrl);
         }
-        catch (err){
+        catch (err) {
             let message = "Unable to create repository";
-            
+
             if (err instanceof Error) message = err.message;
 
             this.setState({
@@ -120,7 +137,10 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
                 errorMessage: message
             })
         }
+    }
 
+    private async createInitialCommit(createReadme: boolean, gitignoreTemplate?: string): Promise<void> {
+        //TODO: Create README and .gitignore initial commit from template
     }
 
     private async getRepoCreateOptions(repoName: string): Promise<GitRepositoryCreateOptions> {

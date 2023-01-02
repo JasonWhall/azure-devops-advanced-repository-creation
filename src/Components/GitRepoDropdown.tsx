@@ -3,7 +3,6 @@ import React from "react";
 import { Dropdown } from "azure-devops-ui/Dropdown";
 import { DropdownSelection } from "azure-devops-ui/Utilities/DropdownSelection";
 
-
 interface IGitRepoDropdownProps {
     label: string;
 }
