@@ -1,54 +1,47 @@
 import "./Panel.scss";
+import { showRootComponent } from "../Common";
+import { LoadingSpinner, GitRepoDropdown, RepoIdentityPicker } from "../Components";
 
 import * as React from "react";
 import * as SDK from "azure-devops-extension-sdk";
 
-import { IObservableArray, ObservableArray } from "azure-devops-ui/Core/Observable";
-
+// Panel Layout components
 import { PanelFooter, PanelContent } from "azure-devops-ui/Panel";
 
+// Text Fields for inputs
 import { TextField, TextFieldWidth } from "azure-devops-ui/TextField";
-import { IdentityPicker, IIdentity, IPeoplePickerProvider } from "azure-devops-ui/IdentityPicker";
-import { PeoplePickerProvider } from "azure-devops-extension-api/Identities";
 
-import { Dropdown } from "azure-devops-ui/Dropdown";
-import { DropdownSelection } from "azure-devops-ui/Utilities/DropdownSelection";
-
+// Buttons for create/cancel
 import { Button } from "azure-devops-ui/Button";
 import { ButtonGroup } from "azure-devops-ui/ButtonGroup";
 
 import { GitRestClient } from "azure-devops-extension-api/Git/GitClient";
-
-import { showRootComponent } from "../Common";
-import { CommonServiceIds, getClient, IHostNavigationService, IProjectPageService } from "azure-devops-extension-api";
 import { GitRepositoryCreateOptions } from "azure-devops-extension-api/Git"
 
+import { CommonServiceIds, getClient, IHostNavigationService, IProjectPageService } from "azure-devops-extension-api";
+
 interface IPanelContentState {
-    pickerProvider: IPeoplePickerProvider
     repoName: string;
+    loading: boolean; // Used to display spinner and lock submission
 }
 
 class RepoPanelContent extends React.Component<{}, IPanelContentState> {
 
-    private selectedIdentities: IObservableArray<IIdentity> = new ObservableArray<IIdentity>([]);
-    private selection = new DropdownSelection();
     private repoClient: GitRestClient;
 
     constructor(props: {}) {
         super(props);
         this.state = {
-            pickerProvider: new PeoplePickerProvider(),
-            repoName: ""
+            repoName: "",
+            loading: false,
         };
 
-        this.selection.select(0);
-
         this.repoClient = getClient(GitRestClient)
-
     }
 
     public async componentDidMount() {
         SDK.init();
+
         SDK.ready();
     }
 
@@ -56,22 +49,10 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
 
         return (
             <div className="flex-column flex-grow">
+                {this.state.loading && <LoadingSpinner label="Repository creation in progress ..." />}
                 <PanelContent>
                     <div className="flex-column flex-grow rhythm-vertical-16">
-                        <div className="flex-column">
-                            <label className="bolt-formitem-label">Repository type</label>
-                            <Dropdown
-                                disabled={true}
-                                items={[
-                                    {
-                                        id: "Git",
-                                        text: "Git",
-                                        iconProps: { iconName: "GitLogo" }
-                                    }
-                                ]}
-                                selection={this.selection}
-                            />
-                        </div>
+                        <GitRepoDropdown label="Repository type" />
                         <TextField
                             value={this.state.repoName}
                             onChange={(e, newValue) => (this.setState({ repoName: newValue }))}
@@ -79,39 +60,22 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
                             width={TextFieldWidth.auto}
                             label="Repository name *"
                         />
-                        <div className="flex-column">
-                            <label className="bolt-formitem-label">Maintainers</label>
-                            <IdentityPicker
-                                onIdentitiesRemoved={this.onIdentitiesRemove}
-                                onIdentityAdded={this.onIdentityAdded}
-                                onIdentityRemoved={this.onIdentityRemoved}
-                                pickerProvider={this.state.pickerProvider}
-                                selectedIdentities={this.selectedIdentities}
-                            />
-                        </div>
-                        <div className="flex-column">
-                            <label className="bolt-formitem-label">External Collaborators</label>
-                            <IdentityPicker
-                                onIdentitiesRemoved={this.onIdentitiesRemove}
-                                onIdentityAdded={this.onIdentityAdded}
-                                onIdentityRemoved={this.onIdentityRemoved}
-                                pickerProvider={this.state.pickerProvider}
-                                selectedIdentities={this.selectedIdentities}
-                            />
-                        </div>
+                        {/* TODO: Wire up */}
+                        <RepoIdentityPicker label="Maintainers" />
+                        <RepoIdentityPicker label="External Collaborators" />
                     </div>
                 </PanelContent>
                 <PanelFooter>
                     <ButtonGroup className="bolt-panel-footer-buttons flex-grow">
                         <Button
                             text="Cancel"
-                            onClick={() => this.dismiss()}
+                            onClick={() => this.finalise()}
                         />
                         <Button
                             primary={true}
                             text="Create"
                             onClick={() => this.createRepo()}
-                            disabled={this.isCreateDisabled()}
+                            disabled={this.state.repoName.length < 1 || this.state.loading}
                         />
                     </ButtonGroup>
                 </PanelFooter>
@@ -119,50 +83,45 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
         );
     }
 
-    private dismiss() {
-        const config = SDK.getConfiguration();
-        config.panel.close();
+    private async createRepo(): Promise<void> {
+        this.setState({ loading: true });
+        const createOptions = await this.getRepoCreateOptions(this.state.repoName);
+
+        // TODO: Handle errors on creation to present a message
+        const result = await this.repoClient.createRepository(createOptions, createOptions.project.id);
+
+        this.setState({ loading: false });
+        await this.finalise(result.webUrl);
     }
 
-    private isCreateDisabled(): boolean {
-        if (this.state.repoName !== undefined) {
-            return this.state.repoName.length < 1
-        }
+    private async getRepoCreateOptions(repoName: string): Promise<GitRepositoryCreateOptions> {
 
-        return true;
-    }
-
-    private async createRepo() {
         const projectService = await SDK.getService<IProjectPageService>(CommonServiceIds.ProjectPageService);
         const project = await projectService.getProject();
 
-        const repos = await this.repoClient.getRepositories()
-
-        const opts: GitRepositoryCreateOptions = { name: this.state.repoName, parentRepository: repos[0].parentRepository, project: repos[0].project }
-        const result = await this.repoClient.createRepository(opts, project!.id, undefined);
-
-        const navService = await SDK.getService<IHostNavigationService>(CommonServiceIds.HostNavigationService);
-
-        this.dismiss();
-
-        navService.navigate(result.url);
+        /**
+         * Get an existing repo within the project for repository creation supplemental info,
+         * this is required for GitRepositoryCreateOptions interface even though it is not strictly necessary for the API call.
+         */
+        const repos = await this.repoClient.getRepositories(project?.id) // Always returns at least 1 repo as is a requirement in a project
+        return {
+            name: repoName,
+            parentRepository: repos[0].parentRepository,
+            project: repos[0].project
+        } as GitRepositoryCreateOptions;
     }
 
-    private onIdentitiesRemove = (identities: IIdentity[]) => {
-        this.selectedIdentities.value = this.selectedIdentities.value.filter((entity: IIdentity) => {
-            identities.filter((item) => item.entityId === entity.entityId).length === 0
-        })
+    private async finalise(redirectUrl?: string): Promise<void> {
+        if (redirectUrl) {
+            const navService = await SDK.getService<IHostNavigationService>(CommonServiceIds.HostNavigationService);
+            navService.navigate(redirectUrl);
+        }
+
+        const config = SDK.getConfiguration();
+        if (config.panel) {
+            config.panel.close();
+        }
     }
-
-    private onIdentityAdded = (identity: IIdentity) => this.selectedIdentities.push(identity)
-
-    private onIdentityRemoved = (identity: IIdentity) => {
-        this.selectedIdentities.value = this.selectedIdentities.value.filter((entity: IIdentity) => {
-            console.log(entity.entityId + ":" + identity.entityId);
-            entity.entityId !== identity.entityId
-        })
-    }
-
 }
 
 showRootComponent(<RepoPanelContent />);
