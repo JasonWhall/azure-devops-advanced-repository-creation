@@ -15,14 +15,23 @@ import { TextField, TextFieldWidth } from "azure-devops-ui/TextField";
 import { Button } from "azure-devops-ui/Button";
 import { ButtonGroup } from "azure-devops-ui/ButtonGroup";
 
+// Used to display Error message on failures
+import { MessageCard, MessageCardSeverity } from "azure-devops-ui/MessageCard";
+
 import { GitRestClient } from "azure-devops-extension-api/Git/GitClient";
 import { GitRepositoryCreateOptions } from "azure-devops-extension-api/Git"
 
-import { CommonServiceIds, getClient, IHostNavigationService, IProjectPageService } from "azure-devops-extension-api";
+import {
+    CommonServiceIds,
+    getClient,
+    IHostNavigationService,
+    IProjectPageService
+} from "azure-devops-extension-api";
 
 interface IPanelContentState {
     repoName: string;
     loading: boolean; // Used to display spinner and lock submission
+    errorOnCreate: boolean;
 }
 
 class RepoPanelContent extends React.Component<{}, IPanelContentState> {
@@ -34,6 +43,7 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
         this.state = {
             repoName: "",
             loading: false,
+            errorOnCreate: false,
         };
 
         this.repoClient = getClient(GitRestClient)
@@ -50,6 +60,12 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
         return (
             <div className="flex-column flex-grow">
                 {this.state.loading && <LoadingSpinner label="Repository creation in progress ..." />}
+                {this.state.errorOnCreate &&
+                    // @ts-expect-error MessageCardProps type incorrectly does not allow children
+                    <MessageCard severity={MessageCardSeverity.Error} onDismiss={() => this.dismissMessageCard()}>
+                        Unable to Create Repository
+                    </MessageCard>
+                }
                 <PanelContent>
                     <div className="flex-column flex-grow rhythm-vertical-16">
                         <GitRepoDropdown label="Repository type" />
@@ -87,11 +103,18 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
         this.setState({ loading: true });
         const createOptions = await this.getRepoCreateOptions(this.state.repoName);
 
-        // TODO: Handle errors on creation to present a message
-        const result = await this.repoClient.createRepository(createOptions, createOptions.project.id);
+        try {
+            const repositoryResult = await this.repoClient.createRepository(createOptions, createOptions.project.id);
+            this.setState({ loading: false });
+            await this.finalise(repositoryResult.webUrl);
+        }
+        catch {
+            this.setState({
+                errorOnCreate: true,
+                loading: false
+            })
+        }
 
-        this.setState({ loading: false });
-        await this.finalise(result.webUrl);
     }
 
     private async getRepoCreateOptions(repoName: string): Promise<GitRepositoryCreateOptions> {
@@ -110,6 +133,10 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
             project: repos[0].project
         } as GitRepositoryCreateOptions;
     }
+
+    private dismissMessageCard(): void {
+        this.setState({ errorOnCreate: false })
+    };
 
     private async finalise(redirectUrl?: string): Promise<void> {
         if (redirectUrl) {
