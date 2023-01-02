@@ -4,16 +4,24 @@ const CopyWebpackPlugin = require("copy-webpack-plugin");
 
 const srcDir = path.join(__dirname, "src");
 
-const entries = fs.readdirSync(srcDir)
-    .filter(dir => dir != 'Components' && fs.statSync(path.join(srcDir, dir)).isDirectory())
-    .reduce((acc, dir) => ({ ...acc, [dir]: `${srcDir}/${dir}/${dir}`}), {})
-
-console.log(entries)
+const entries = {
+    Panel: `${srcDir}/Panel/Panel`,
+    RepositoryAction: `${srcDir}/RepositoryAction/RepositoryAction`
+}
 
 module.exports = {
     entry: entries,
+    devtool: "inline-source-map",
     output: {
-        filename: "[name]/[name].js"
+        filename: "[name]/[name].js",
+        publicPath: "/dist/"
+    },
+    devServer: {
+        server: 'https',
+        port: 3000,
+    },
+    stats: {
+        warnings: false
     },
     module: {
         rules: [
@@ -23,7 +31,7 @@ module.exports = {
                 exclude: /node_modules/,
             },
             {
-                test: /\.scss$/,
+                test: /\.s[ac]ss$/i,
                 use: ["style-loader", "css-loader", "sass-loader"]
             },
             {
@@ -41,7 +49,7 @@ module.exports = {
         ]
     },
     resolve: {
-        extensions: [ '.tsx', '.ts', '.js', '.html' ],
+        extensions: ['.tsx', '.ts', '.js', '.html'],
         alias: {
             "azure-devops-extension-sdk": path.resolve("node_modules/azure-devops-extension-sdk")
         },
@@ -53,4 +61,4 @@ module.exports = {
             ]
         })
     ]
-} 
+}

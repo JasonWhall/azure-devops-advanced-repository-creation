@@ -1,5 +1,7 @@
 {
     "id": "repository-advanced-creator-dev",
+    "name": "Repository Advanced Create [DEV]",
+    "version": "0.0.16",
     "public": false,
     "baseUri": "https://localhost:3000"
 }
