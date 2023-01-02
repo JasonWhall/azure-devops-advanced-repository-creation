@@ -2,7 +2,7 @@
   "manifestVersion": 1,
   "id": "repository-advanced-creator",
   "publisher": "JasonWhalley",
-  "version": "0.0.1",
+  "version": "0.0.15",
   "name": "Repository Advanced Create",
   "description": "Create a Repository with supplemental groups",
   "categories": [
@@ -16,6 +16,9 @@
   "icons": {
     "default": "logo.png"
   },
+  "scopes": [
+    "vso.code_manage"
+  ],
   "contributions": [
     {
       "id": "repository-advanced-creator-action",
@@ -25,9 +28,16 @@
       ],
       "properties": {
         "text": "Advanced Repository Creation",
-        "uri": "dist/index.html",
+        "uri": "dist/RepositoryAction/RepositoryAction.html",
         "iconName": "Add",
         "registeredObjectId": "repository-advanced-creation"
+      }
+    },
+    {
+      "id": "advanced-repo-panel-content",
+      "type": "ms.vss-web.external-content",
+      "properties": {
+        "uri": "dist/Panel/Panel.html"
       }
     }
   ],
