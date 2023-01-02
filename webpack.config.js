@@ -2,15 +2,11 @@ const path = require("path");
 const fs = require("fs");
 const CopyWebpackPlugin = require("copy-webpack-plugin");
 
-const entries = {};
-
 const srcDir = path.join(__dirname, "src");
 
-fs.readdirSync(srcDir).filter(dir => {
-    if (fs.statSync(path.join(srcDir, dir)).isDirectory()) {
-        entries[dir] = "./" + path.relative(process.cwd(), path.join(srcDir, dir, dir));
-    }
-});
+const entries = fs.readdirSync(srcDir)
+    .filter(dir => dir != 'Components' && fs.statSync(path.join(srcDir, dir)).isDirectory())
+    .reduce((acc, dir) => ({ ...acc, [dir]: `${srcDir}/${dir}/${dir}`}), {})
 
 console.log(entries)
 
