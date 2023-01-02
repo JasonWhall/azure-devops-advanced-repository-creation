@@ -11,14 +11,16 @@ const entries = {
 
 module.exports = {
     entry: entries,
-    devtool: "inline-source-map",
+    devtool: "source-map",
     output: {
         filename: "[name]/[name].js",
-        publicPath: "/dist/"
+        publicPath: "/dist/",
+        clean: true
     },
     devServer: {
         server: 'https',
         port: 3000,
+        static: ["dist"]
     },
     stats: {
         warnings: false
@@ -40,7 +42,7 @@ module.exports = {
             },
             {
                 test: /\.woff$/,
-                type: 'asset/inline'
+                type: 'asset/resource'
             },
             {
                 test: /\.html$/,

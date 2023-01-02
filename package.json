@@ -5,8 +5,8 @@
   "scripts": {
     "clean": "rimraf ./dist",
     "build": "npm run compile",
-    "dev": "webpack-dev-server --mode development --static ./dist",
-    "compile": "npm run clean && webpack --mode production",
+    "dev": "webpack-dev-server --mode development",
+    "compile": "webpack --mode production",
     "test": "echo \"Error: no test specified\" && exit 1",
     "package": "tfx extension create --manifest-globs azure-devops-extension.json src/**/*.json",
     "package:dev": "tfx extension create --manifest-globs azure-devops-extension.json src/**/*.json --overrides-file azure-devops-extension-dev.json"
