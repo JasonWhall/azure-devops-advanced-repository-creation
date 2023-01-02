@@ -32,6 +32,7 @@ interface IPanelContentState {
     repoName: string;
     loading: boolean; // Used to display spinner and lock submission
     errorOnCreate: boolean;
+    errorMessage?: string;
 }
 
 class RepoPanelContent extends React.Component<{}, IPanelContentState> {
@@ -63,7 +64,7 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
                 {this.state.errorOnCreate &&
                     // @ts-expect-error MessageCardProps type incorrectly does not allow children
                     <MessageCard severity={MessageCardSeverity.Error} onDismiss={() => this.dismissMessageCard()}>
-                        Unable to Create Repository
+                        {this.state.errorMessage}
                     </MessageCard>
                 }
                 <PanelContent>
@@ -108,10 +109,15 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
             this.setState({ loading: false });
             await this.finalise(repositoryResult.webUrl);
         }
-        catch {
+        catch (err){
+            let message = "Unable to create repository";
+            
+            if (err instanceof Error) message = err.message;
+
             this.setState({
                 errorOnCreate: true,
-                loading: false
+                loading: false,
+                errorMessage: message
             })
         }
 
