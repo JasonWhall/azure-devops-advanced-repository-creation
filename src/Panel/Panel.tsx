@@ -154,7 +154,7 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
         let gitIgnore = "";
 
         if (item.text != "None") {
-            gitIgnore = item.text || "";
+            gitIgnore = item.id;
         }
 
         this.setState({ gitIgnoreSelection: gitIgnore })

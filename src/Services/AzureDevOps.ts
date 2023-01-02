@@ -64,7 +64,8 @@ export async function initializeRepository(repository: GitRepository, createRead
     }
 
     if (gitignoreTemplate) {
-        comment.push(`.gitignore (${gitignoreTemplate}) files`);
+        const templateName = gitignoreTemplate.split('.', 1)[0];
+        comment.push(`.gitignore (${templateName}) files`);
 
         gitChange.push({
             changeType: 1,
@@ -95,7 +96,7 @@ export async function initializeRepository(repository: GitRepository, createRead
         await client.newRequest<GitPushModel>({
             apiVersion: '6.0',
             method: 'POST',
-            routeTemplate: '{project}/_apis/git/{repositoryId}',
+            routeTemplate: '{project}/_apis/git/repositories/{repositoryId}/pushes',
             routeValues: {
                 project: repository.project.id,
                 repositoryId: repository.id
