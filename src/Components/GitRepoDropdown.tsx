@@ -2,6 +2,7 @@ import React from 'react';
 
 import { Dropdown } from 'azure-devops-ui/Dropdown';
 import { DropdownSelection } from 'azure-devops-ui/Utilities/DropdownSelection';
+import { FormItem } from 'azure-devops-ui/FormItem';
 
 interface IGitRepoDropdownProps {
   label: string;
@@ -20,7 +21,7 @@ export class GitRepoDropdown extends React.Component<IGitRepoDropdownProps, {}> 
   public render(): JSX.Element {
     return (
       <div className='flex-column'>
-        <label className='bolt-formitem-label'>{this.props.label}</label>
+        <FormItem label={this.props.label} />
         <Dropdown
           disabled={true}
           items={[

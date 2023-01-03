@@ -1,11 +1,20 @@
 import React from 'react';
 
 import { IdentityPicker, IIdentity, IPeoplePickerProvider } from 'azure-devops-ui/IdentityPicker';
-import { IObservableArray, ObservableArray } from 'azure-devops-ui/Core/Observable';
+import {
+  IObservableArray,
+  IReadonlyObservableArray,
+  ObservableArray,
+} from 'azure-devops-ui/Core/Observable';
 import { PeoplePickerProvider } from 'azure-devops-extension-api/Identities';
+import { FormItem } from 'azure-devops-ui/FormItem';
 
 interface IRepoIdentityPickerProps {
   label: string;
+  onIdentitiesRemoved: (identities: IIdentity[]) => void;
+  onIdentityAdded: (tag: IIdentity) => void;
+  onIdentityRemoved: (tag: IIdentity) => void;
+  selectedIdentities: IIdentity[] | IReadonlyObservableArray<IIdentity>;
 }
 
 interface IRepoIdentityPickerState {
@@ -29,38 +38,15 @@ export class RepoIdentityPicker extends React.Component<
   public render(): JSX.Element {
     return (
       <div className='flex-column'>
-        <label className='bolt-formitem-label'>{this.props.label}</label>
+        <FormItem label={this.props.label} />
         <IdentityPicker
-          onIdentitiesRemoved={this.onIdentitiesRemove}
-          onIdentityAdded={this.onIdentityAdded}
-          onIdentityRemoved={this.onIdentityRemoved}
+          onIdentitiesRemoved={this.props.onIdentitiesRemoved}
+          onIdentityAdded={this.props.onIdentityAdded}
+          onIdentityRemoved={this.props.onIdentityRemoved}
           pickerProvider={this.state.pickerProvider}
-          selectedIdentities={this.selectedIdentities}
+          selectedIdentities={this.props.selectedIdentities}
         />
       </div>
     );
   }
-
-  private onIdentitiesRemove = (identities: IIdentity[]) => {
-    this.selectedIdentities.value = this.selectedIdentities.value.filter((entity: IIdentity) => {
-      identities.filter((item) => item.entityId === entity.entityId).length === 0;
-    });
-  };
-
-  private onIdentityAdded = (identity: IIdentity) => {
-    // TODO: improve initial hack to display images on correct domain.
-    if (identity.image) {
-      identity.image = 'https://dev.azure.com/' + identity.image;
-    }
-    this.selectedIdentities.push(identity);
-  };
-
-  // TODO: Remove only single identity, not all
-  private onIdentityRemoved = (identity: IIdentity) => {
-    const filteredIdentities = this.selectedIdentities.value.filter((entity: IIdentity) => {
-      entity.entityId != identity.entityId;
-    });
-
-    this.selectedIdentities.value = filteredIdentities;
-  };
 }

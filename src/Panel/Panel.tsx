@@ -31,6 +31,8 @@ import { CommonServiceIds, IHostNavigationService } from 'azure-devops-extension
 
 import { IListBoxItem } from 'azure-devops-ui/ListBox';
 import { Icon } from 'azure-devops-ui/Icon';
+import { ObservableArray } from 'azure-devops-ui/Core/Observable';
+import { IIdentity } from 'azure-devops-ui/IdentityPicker';
 
 interface IPanelContentState {
   repoName: string;
@@ -43,6 +45,9 @@ interface IPanelContentState {
 }
 
 class RepoPanelContent extends React.Component<{}, IPanelContentState> {
+  private selectedMaintainers = new ObservableArray<IIdentity>([]);
+  private selectedCollaborators = new ObservableArray<IIdentity>([]);
+
   constructor(props: {}) {
     super(props);
 
@@ -90,9 +95,32 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
               onChange={(e, checked) => this.setState({ createReadme: checked })}
             />
             <GitignoreDropdown onSelect={(_e, item) => this.setGitignoreSelection(item)} />
-            {/* TODO: Wire up */}
-            <RepoIdentityPicker label='Maintainers' />
-            <RepoIdentityPicker label='External Collaborators' />
+            <RepoIdentityPicker
+              label='Maintainers'
+              onIdentitiesRemoved={(identities: IIdentity[]) =>
+                this.onIdentitiesRemoved(identities, this.selectedMaintainers)
+              }
+              onIdentityAdded={(identity: IIdentity) =>
+                this.onIdentityAdded(identity, this.selectedMaintainers)
+              }
+              onIdentityRemoved={(identity: IIdentity) =>
+                this.onIdentityRemoved(identity, this.selectedMaintainers)
+              }
+              selectedIdentities={this.selectedMaintainers}
+            />
+            <RepoIdentityPicker
+              label='External Collaborators'
+              onIdentitiesRemoved={(identities: IIdentity[]) =>
+                this.onIdentitiesRemoved(identities, this.selectedCollaborators)
+              }
+              onIdentityAdded={(identity: IIdentity) =>
+                this.onIdentityAdded(identity, this.selectedCollaborators)
+              }
+              onIdentityRemoved={(identity: IIdentity) =>
+                this.onIdentityRemoved(identity, this.selectedCollaborators)
+              }
+              selectedIdentities={this.selectedCollaborators}
+            />
             {(this.state.createReadme || this.state.gitIgnoreSelection) && (
               <span className='margin-16'>
                 Your repository will be initialized with a <Icon iconName='OpenSource'></Icon>
@@ -127,6 +155,8 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
         this.state.gitIgnoreSelection
       );
 
+      // TODO: Create supplemental groups
+
       this.setState({ loading: false });
       await this.finalise(repository.webUrl);
     } catch (err) {
@@ -150,6 +180,35 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
     }
 
     this.setState({ gitIgnoreSelection: gitIgnore });
+  }
+
+  private onIdentitiesRemoved(
+    identities: IIdentity[],
+    selectedIdentities: ObservableArray<IIdentity>
+  ): void {
+    selectedIdentities.value = selectedIdentities.value.filter((entity: IIdentity) => {
+      identities.filter((item) => item.entityId === entity.entityId).length === 0;
+    });
+  }
+
+  private onIdentityAdded(
+    identity: IIdentity,
+    selectedIdentities: ObservableArray<IIdentity>
+  ): void {
+    // TODO: improve initial hack to display images on correct domain.
+    if (identity.image) {
+      identity.image = 'https://dev.azure.com/' + identity.image;
+    }
+    selectedIdentities.push(identity);
+  }
+
+  private onIdentityRemoved(
+    identity: IIdentity,
+    selectedIdentities: ObservableArray<IIdentity>
+  ): void {
+    selectedIdentities.value = selectedIdentities.value.filter(
+      (entity: IIdentity) => entity.entityId != identity.entityId
+    );
   }
 
   private async finalise(redirectUrl?: string): Promise<void> {
