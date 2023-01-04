@@ -27,12 +27,19 @@ import { ButtonGroup } from 'azure-devops-ui/ButtonGroup';
 // Used to display Error message on failures
 import { MessageCard, MessageCardSeverity } from 'azure-devops-ui/MessageCard';
 
-import { CommonServiceIds, IHostNavigationService } from 'azure-devops-extension-api';
+import {
+  CommonServiceIds,
+  getClient,
+  IHostNavigationService,
+  IProjectPageService,
+} from 'azure-devops-extension-api';
 
 import { IListBoxItem } from 'azure-devops-ui/ListBox';
 import { Icon } from 'azure-devops-ui/Icon';
 import { ObservableArray } from 'azure-devops-ui/Core/Observable';
 import { IIdentity } from 'azure-devops-ui/IdentityPicker';
+
+import { GraphGroupVstsCreationContext, GraphRestClient } from 'azure-devops-extension-api/Graph';
 
 interface IPanelContentState {
   repoName: string;
@@ -155,7 +162,15 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
         this.state.gitIgnoreSelection
       );
 
-      // TODO: Create supplemental groups
+      await this.createGroup(this.selectedMaintainers.value, 'Maintainers', this.state.repoName);
+
+      await this.createGroup(
+        this.selectedMaintainers.value,
+        'External Collaborators',
+        this.state.repoName
+      );
+
+      // TODO: Assign permissions to repo
 
       this.setState({ loading: false });
       await this.finalise(repository.webUrl);
@@ -180,6 +195,33 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
     }
 
     this.setState({ gitIgnoreSelection: gitIgnore });
+  }
+
+  private async createGroup(
+    identities: IIdentity[],
+    groupType: string,
+    repoName: string
+  ): Promise<void> {
+    // TODO: external class to use a single instance of client
+    const client = getClient(GraphRestClient);
+
+    const projectService = await SDK.getService<IProjectPageService>(
+      CommonServiceIds.ProjectPageService
+    );
+    const project = await projectService.getProject();
+    const descriptor = project?.id ? await client.getDescriptor(project.id) : undefined;
+
+    const groupContext = {
+      displayName: `${repoName} Repository ${groupType}`,
+      description: `Repository ${groupType} for repository - ${repoName}`,
+    } as GraphGroupVstsCreationContext;
+
+    const group = await client.createGroup(groupContext, descriptor?.value);
+
+    identities.forEach(async (identity: IIdentity) => {
+      if (identity.subjectDescriptor)
+        await client.addMembership(identity.subjectDescriptor, group.descriptor);
+    });
   }
 
   private onIdentitiesRemoved(

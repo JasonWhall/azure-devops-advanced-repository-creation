@@ -9,6 +9,7 @@
     }
   ],
   "scopes": [
-    "vso.code_manage"
+    "vso.code_manage",
+    "vso.graph_manage"
   ]
 }
