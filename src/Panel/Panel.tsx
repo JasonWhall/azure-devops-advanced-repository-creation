@@ -1,45 +1,32 @@
 import './Panel.scss';
 import { showRootComponent } from '../Common';
-import { createRepository, initializeRepository } from '../Services';
-
+import { GitContributor } from '../Interfaces';
+import {
+  addGitPermissions,
+  createGroup,
+  createRepository,
+  initializeRepository,
+  navigate,
+} from '../Services';
 import {
   LoadingSpinner,
   GitRepoDropdown,
   RepoIdentityPicker,
   GitignoreDropdown,
 } from '../Components';
-
 import * as React from 'react';
 import * as SDK from 'azure-devops-extension-sdk';
-
-// Panel Layout components
 import { PanelFooter, PanelContent } from 'azure-devops-ui/Panel';
-
-// Text Fields for inputs
 import { TextField, TextFieldWidth } from 'azure-devops-ui/TextField';
-
 import { Checkbox } from 'azure-devops-ui/Checkbox';
-
-// Buttons for create/cancel
 import { Button } from 'azure-devops-ui/Button';
 import { ButtonGroup } from 'azure-devops-ui/ButtonGroup';
-
-// Used to display Error message on failures
 import { MessageCard, MessageCardSeverity } from 'azure-devops-ui/MessageCard';
-
-import {
-  CommonServiceIds,
-  getClient,
-  IHostNavigationService,
-  IProjectPageService,
-} from 'azure-devops-extension-api';
-
 import { IListBoxItem } from 'azure-devops-ui/ListBox';
 import { Icon } from 'azure-devops-ui/Icon';
 import { ObservableArray } from 'azure-devops-ui/Core/Observable';
 import { IIdentity } from 'azure-devops-ui/IdentityPicker';
-
-import { GraphGroupVstsCreationContext, GraphRestClient } from 'azure-devops-extension-api/Graph';
+import { CommonServiceIds, IProjectPageService } from 'azure-devops-extension-api';
 
 interface IPanelContentState {
   repoName: string;
@@ -154,23 +141,40 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
   private async create(): Promise<void> {
     this.setState({ loading: true });
 
+    const projectService = await SDK.getService<IProjectPageService>(
+      CommonServiceIds.ProjectPageService
+    );
+
+    // TODO: Check Project Id is found.
+    const projectId = await projectService.getProject().then((project) => project?.id || '');
+
     try {
-      const repository = await createRepository(this.state.repoName);
+      const repository = await createRepository(this.state.repoName, projectId);
+
       await initializeRepository(
         repository,
         this.state.createReadme,
         this.state.gitIgnoreSelection
       );
 
-      await this.createGroup(this.selectedMaintainers.value, 'Maintainers', this.state.repoName);
+      const contributorGroups: GitContributor[] = [
+        {
+          type: 'Maintainer',
+          gitActions: ['Administer'],
+          identities: this.selectedMaintainers.value,
+        },
+        {
+          type: 'External Collaborators',
+          gitActions: ['GenericContribute', 'CreateBranch', 'PullRequestContribute'],
+          identities: this.selectedCollaborators.value,
+        },
+      ];
 
-      await this.createGroup(
-        this.selectedMaintainers.value,
-        'External Collaborators',
-        this.state.repoName
-      );
-
-      // TODO: Assign permissions to repo
+      contributorGroups.forEach(async (contributor) => {
+        console.log(`Creating Group ${contributor.type} ${projectId}`);
+        await createGroup(contributor.identities, contributor.type, this.state.repoName, projectId);
+        await addGitPermissions(contributor.gitActions, contributor.identities, repository);
+      });
 
       this.setState({ loading: false });
       await this.finalise(repository.webUrl);
@@ -195,33 +199,6 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
     }
 
     this.setState({ gitIgnoreSelection: gitIgnore });
-  }
-
-  private async createGroup(
-    identities: IIdentity[],
-    groupType: string,
-    repoName: string
-  ): Promise<void> {
-    // TODO: external class to use a single instance of client
-    const client = getClient(GraphRestClient);
-
-    const projectService = await SDK.getService<IProjectPageService>(
-      CommonServiceIds.ProjectPageService
-    );
-    const project = await projectService.getProject();
-    const descriptor = project?.id ? await client.getDescriptor(project.id) : undefined;
-
-    const groupContext = {
-      displayName: `${repoName} Repository ${groupType}`,
-      description: `Repository ${groupType} for repository - ${repoName}`,
-    } as GraphGroupVstsCreationContext;
-
-    const group = await client.createGroup(groupContext, descriptor?.value);
-
-    identities.forEach(async (identity: IIdentity) => {
-      if (identity.subjectDescriptor)
-        await client.addMembership(identity.subjectDescriptor, group.descriptor);
-    });
   }
 
   private onIdentitiesRemoved(
@@ -255,10 +232,7 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
 
   private async finalise(redirectUrl?: string): Promise<void> {
     if (redirectUrl) {
-      const navService = await SDK.getService<IHostNavigationService>(
-        CommonServiceIds.HostNavigationService
-      );
-      navService.navigate(redirectUrl);
+      navigate(redirectUrl);
     }
 
     const config = SDK.getConfiguration();

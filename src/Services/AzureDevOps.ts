@@ -1,57 +1,173 @@
 import * as SDK from 'azure-devops-extension-sdk';
-import {
-  CommonServiceIds,
-  getClient,
-  IProjectPageService,
-  IVssRestClientOptions,
-} from 'azure-devops-extension-api';
-import {
-  RestClientBase,
-  RestClientRequestParams,
-} from 'azure-devops-extension-api/Common/RestClientBase';
-import { GitRepository } from 'azure-devops-extension-api/Git';
-import { GitPushModel, GitRepositoryCreateOptionsModel } from '../Models';
+import { SecurityNamespaceDescription, AccessControlEntry, AccessControlList } from '../Interfaces';
+import { CommonServiceIds, getClient, IHostNavigationService } from 'azure-devops-extension-api';
+import { RestClientBase } from 'azure-devops-extension-api/Common/RestClientBase';
+import { GitPush, GitRepository, GitRepositoryCreateOptions } from 'azure-devops-extension-api/Git';
+import { GraphGroupVstsCreationContext, GraphRestClient } from 'azure-devops-extension-api/Graph';
+import { IIdentity } from 'azure-devops-ui/IdentityPicker';
 
 /**
- * Helper class for making generic API calls to Azure DevOps when the existing API clients are missing updated specifications.
+ * Customised {@link https://github.com/microsoft/azure-devops-extension-api/blob/master/src/Git/GitClient.ts GitClient }
+ * that allows using optional fields in some interfaces
  */
-export class DevOpsClient extends RestClientBase {
-  constructor(options: IVssRestClientOptions) {
-    super(options);
+export class GitClient extends RestClientBase {
+  /**
+   * Creates a repository in an Azure DevOps project.
+   * @param options Options to create the repository
+   * @param project Name or Id of the Project
+   * @returns A Git Repository Response
+   */
+  public async createRepository(
+    options: Partial<GitRepositoryCreateOptions>,
+    project: string
+  ): Promise<GitRepository> {
+    return await this.beginRequest<GitRepository>({
+      apiVersion: '6.0',
+      method: 'POST',
+      routeTemplate: '{project}/_apis/git/Repositories',
+      routeValues: {
+        project: project,
+      },
+      body: options,
+    });
   }
 
-  public async newRequest<T>(requestParams: RestClientRequestParams) {
-    return this.beginRequest<T>(requestParams);
+  /**
+   * Create a Git push in an Azure DevOps repository
+   * @param push Options to create a Git Push
+   * @param repositoryId The Id of the Repository
+   * @param project Name or Id of the Project
+   * @returns a Git Push Response
+   */
+  public async createPush(
+    push: Partial<GitPush>,
+    repositoryId: string,
+    project: string
+  ): Promise<GitPush> {
+    return await this.beginRequest<GitPush>({
+      apiVersion: '6.0',
+      method: 'POST',
+      routeTemplate: '{project}/_apis/git/repositories/{repositoryId}/pushes',
+      routeValues: {
+        project: project,
+        repositoryId: repositoryId,
+      },
+      body: push,
+    });
   }
 }
 
-export async function createRepository(repoName: string): Promise<GitRepository> {
-  const projectService = await SDK.getService<IProjectPageService>(
-    CommonServiceIds.ProjectPageService
-  );
-  const project = await projectService.getProject();
+/**
+ * Azure DevOps REST client
+ * {@link https://learn.microsoft.com/rest/api/azure/devops/security/security-namespaces Security Namespaces}
+ */
+export class SecurityNameSpaceClient extends RestClientBase {
+  /**
+   * Gets an Array of Security Namespaces that contain actions that can permissions can be granted against.
+   * @param namespaceId The namespace Id of a Security Namespace, optional.
+   * @returns An Array of {@link SecurityNamespaceDescription Security Namespace Descriptions}
+   */
+  public async getSecurityNamespace(namespaceId?: string): Promise<SecurityNamespaceDescription[]> {
+    return await this.beginRequest<SecurityNamespaceDescription[]>({
+      apiVersion: '6.0',
+      method: 'GET',
+      routeTemplate: '_apis/securitynamespaces/{namespaceId}',
+      routeValues: {
+        namespaceId: namespaceId,
+      },
+    });
+  }
+}
 
-  const createOptions = {
-    name: repoName,
-    project: {
-      id: project?.id,
-      name: project?.name,
-    },
-  } as GitRepositoryCreateOptionsModel;
+/**
+ * Azure DevOps REST client
+ * {@link https://learn.microsoft.com/rest/api/azure/devops/security/access-control-entries Access Control Entries}
+ */
+export class AccessControlEntriesClient extends RestClientBase {
+  /**
+   * Creates a new Access Control Entry
+   * @param accessControlEntries An Array of Access Control Entries to Create
+   * @param securityNamespaceId The Namespace to Assign the Access control entries to.
+   * @returns an Array of created Access Control Entries.
+   */
+  public async createAccessControlEntry(
+    accessControlList: AccessControlList,
+    securityNamespaceId: string
+  ): Promise<AccessControlEntry[]> {
+    return await this.beginRequest<AccessControlEntry[]>({
+      apiVersion: '6.0',
+      method: 'POST',
+      routeTemplate: '_apis/accesscontrolentries/{securityNamespaceId}',
+      routeValues: {
+        securityNamespaceId: securityNamespaceId,
+      },
+      body: accessControlList,
+    });
+  }
+}
 
-  const client = getClient(DevOpsClient);
+export async function addGitPermissions(
+  actions: string[],
+  identities: IIdentity[],
+  repository: GitRepository
+): Promise<void> {
+  const gitNamespace = await getSecurityNamespace('Git Repositories');
 
-  const repositoryResult = await client.newRequest<GitRepository>({
-    apiVersion: '6.0',
-    method: 'POST',
-    routeTemplate: '{project}/_apis/git/Repositories',
-    routeValues: {
-      project: project?.id,
-    },
-    body: createOptions,
+  const gitPermissions = gitNamespace.actions
+    .filter((action) => actions.includes(action.displayName || ''))
+    .map((action) => action.bit);
+
+  const aceEntries: AccessControlEntry[] = [];
+
+  // Loop over Permission actions and Identities to create a list of Access Control Entries.
+  gitPermissions.forEach((gitPermission) => {
+    identities.forEach((identity) => {
+      aceEntries.push({
+        allow: gitPermission,
+        descriptor: {
+          identifier: identity.subjectDescriptor || '',
+          identityType: identity.entityType,
+        },
+      });
+    });
   });
 
-  return repositoryResult;
+  const aceList: AccessControlList = {
+    merge: true,
+    token: `repov2/${repository.project.id}/${repository.id}`,
+    accessControlEntries: aceEntries,
+  };
+
+  if (gitNamespace.namespaceId) {
+    const client = getClient(AccessControlEntriesClient);
+    await client.createAccessControlEntry(aceList, gitNamespace.namespaceId);
+  }
+}
+
+export async function getSecurityNamespace(name: string): Promise<SecurityNamespaceDescription> {
+  const client = getClient(SecurityNameSpaceClient);
+  const namespaces = await client.getSecurityNamespace();
+
+  const match = namespaces.filter((namespace) => namespace.displayName == name);
+
+  if (match.length === 0) {
+    throw 'Cannot find matching security namespace';
+  }
+
+  return match[0];
+}
+
+export async function createRepository(repoName: string, projectId: string) {
+  const client = getClient(GitClient);
+
+  const options = {
+    name: repoName,
+    project: {
+      id: projectId,
+    },
+  } as Partial<GitRepositoryCreateOptions>;
+
+  return await client.createRepository(options, projectId);
 }
 
 export async function initializeRepository(
@@ -106,20 +222,40 @@ export async function initializeRepository(
         oldObjectId: '0000000000000000000000000000000000000000',
       },
     ],
-  } as GitPushModel;
+  } as Partial<GitPush>;
 
   if (createReadme || gitignoreTemplate) {
-    const client = getClient(DevOpsClient);
-
-    await client.newRequest<GitPushModel>({
-      apiVersion: '6.0',
-      method: 'POST',
-      routeTemplate: '{project}/_apis/git/repositories/{repositoryId}/pushes',
-      routeValues: {
-        project: repository.project.id,
-        repositoryId: repository.id,
-      },
-      body: pushData,
-    });
+    const client = getClient(GitClient);
+    await client.createPush(pushData, repository.id, repository.project.id);
   }
+}
+
+export async function createGroup(
+  identities: IIdentity[],
+  groupType: string,
+  repoName: string,
+  projectId: string
+): Promise<void> {
+  const client = getClient(GraphRestClient);
+  const descriptor = await client.getDescriptor(projectId);
+
+  const groupContext = {
+    displayName: `${repoName} Repository ${groupType}`,
+    description: `Repository ${groupType} for repository - ${repoName}`,
+  } as GraphGroupVstsCreationContext;
+
+  const group = await client.createGroup(groupContext, descriptor?.value);
+
+  identities.forEach(async (identity: IIdentity) => {
+    if (identity.subjectDescriptor) {
+      await client.addMembership(identity.subjectDescriptor, group.descriptor);
+    }
+  });
+}
+
+export async function navigate(redirectUrl: string) {
+  const navService = await SDK.getService<IHostNavigationService>(
+    CommonServiceIds.HostNavigationService
+  );
+  navService.navigate(redirectUrl);
 }
