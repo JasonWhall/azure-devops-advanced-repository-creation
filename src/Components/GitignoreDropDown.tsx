@@ -26,7 +26,9 @@ export class GitignoreDropdown extends React.Component<IGitignoreDropdownProps, 
         items={GitIgnoreOptions}
         selection={this.selection}
         renderSelectedItems={this.createPrefix}
-        renderExpandable={(props) => <DropdownExpandableButton {...props} />}
+        renderExpandable={(props) => (
+          <DropdownExpandableButton buttonClassName='flex-grow' {...props} />
+        )}
         onSelect={this.props.onSelect}
         showFilterBox={true}
       />
