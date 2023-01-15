@@ -6,7 +6,6 @@ import {
   createGroup,
   createRepository,
   initializeRepository,
-  navigate,
 } from '../Services';
 import {
   LoadingSpinner,
@@ -26,7 +25,11 @@ import { IListBoxItem } from 'azure-devops-ui/ListBox';
 import { Icon } from 'azure-devops-ui/Icon';
 import { ObservableArray } from 'azure-devops-ui/Core/Observable';
 import { IIdentity } from 'azure-devops-ui/IdentityPicker';
-import { CommonServiceIds, IProjectPageService } from 'azure-devops-extension-api';
+import {
+  CommonServiceIds,
+  IHostNavigationService,
+  IProjectPageService,
+} from 'azure-devops-extension-api';
 
 interface IPanelContentState {
   repoName: string;
@@ -171,10 +174,10 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
       ];
 
       contributorGroups.forEach(async (contributor) => {
-        console.log(`Creating Group ${contributor.type} ${projectId}`);
-        await createGroup(contributor.identities, contributor.type, this.state.repoName, projectId);
-        await addGitPermissions(contributor.gitActions, contributor.identities, repository);
+        contributor.group = await createGroup(contributor, this.state.repoName, projectId);
       });
+
+      await addGitPermissions(contributorGroups, repository);
 
       this.setState({ loading: false });
       await this.finalise(repository.webUrl);
@@ -232,7 +235,10 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
 
   private async finalise(redirectUrl?: string): Promise<void> {
     if (redirectUrl) {
-      navigate(redirectUrl);
+      const navService = await SDK.getService<IHostNavigationService>(
+        CommonServiceIds.HostNavigationService
+      );
+      navService.navigate(redirectUrl);
     }
 
     const config = SDK.getConfiguration();

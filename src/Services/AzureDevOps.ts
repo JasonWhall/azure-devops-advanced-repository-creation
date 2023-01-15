@@ -1,10 +1,17 @@
-import * as SDK from 'azure-devops-extension-sdk';
-import { SecurityNamespaceDescription, AccessControlEntry, AccessControlList } from '../Interfaces';
-import { CommonServiceIds, getClient, IHostNavigationService } from 'azure-devops-extension-api';
+import {
+  SecurityNamespaceDescription,
+  AccessControlEntry,
+  AccessControlList,
+  GitContributor,
+} from '../Interfaces';
+import { getClient } from 'azure-devops-extension-api';
 import { RestClientBase } from 'azure-devops-extension-api/Common/RestClientBase';
 import { GitPush, GitRepository, GitRepositoryCreateOptions } from 'azure-devops-extension-api/Git';
-import { GraphGroupVstsCreationContext, GraphRestClient } from 'azure-devops-extension-api/Graph';
-import { IIdentity } from 'azure-devops-ui/IdentityPicker';
+import {
+  GraphGroup,
+  GraphGroupVstsCreationContext,
+  GraphRestClient,
+} from 'azure-devops-extension-api/Graph';
 
 /**
  * Customised {@link https://github.com/microsoft/azure-devops-extension-api/blob/master/src/Git/GitClient.ts GitClient }
@@ -107,29 +114,28 @@ export class AccessControlEntriesClient extends RestClientBase {
 }
 
 export async function addGitPermissions(
-  actions: string[],
-  identities: IIdentity[],
+  contributors: GitContributor[],
   repository: GitRepository
 ): Promise<void> {
   const gitNamespace = await getSecurityNamespace('Git Repositories');
 
-  const gitPermissions = gitNamespace.actions
-    .filter((action) => actions.includes(action.displayName || ''))
-    .map((action) => action.bit);
-
   const aceEntries: AccessControlEntry[] = [];
 
-  // Loop over Permission actions and Identities to create a list of Access Control Entries.
-  gitPermissions.forEach((gitPermission) => {
-    identities.forEach((identity) => {
-      aceEntries.push({
-        allow: gitPermission,
-        descriptor: {
-          identifier: identity.subjectDescriptor || '',
-          identityType: identity.entityType,
-        },
-      });
-    });
+  contributors.forEach((contributor) => {
+    // TODO: Improve hack?
+    const sid = atob(contributor.group?.descriptor.split('.', 2)[1] || '');
+
+    const gitPermissions = gitNamespace.actions
+      .filter((action) => contributor.gitActions.includes(action.name || ''))
+      .map(
+        (action): AccessControlEntry => ({
+          descriptor: `Microsoft.TeamFoundation.Identity;${sid}`,
+          allow: action.bit,
+          deny: 0,
+        })
+      );
+
+    aceEntries.push(...gitPermissions);
   });
 
   const aceList: AccessControlList = {
@@ -231,31 +237,25 @@ export async function initializeRepository(
 }
 
 export async function createGroup(
-  identities: IIdentity[],
-  groupType: string,
+  contributor: GitContributor,
   repoName: string,
   projectId: string
-): Promise<void> {
+): Promise<GraphGroup> {
   const client = getClient(GraphRestClient);
   const descriptor = await client.getDescriptor(projectId);
 
   const groupContext = {
-    displayName: `${repoName} Repository ${groupType}`,
-    description: `Repository ${groupType} for repository - ${repoName}`,
+    displayName: `${repoName} Repository ${contributor.type}`,
+    description: `Repository ${contributor.type} for repository - ${repoName}`,
   } as GraphGroupVstsCreationContext;
 
   const group = await client.createGroup(groupContext, descriptor?.value);
 
-  identities.forEach(async (identity: IIdentity) => {
+  contributor.identities.forEach(async (identity) => {
     if (identity.subjectDescriptor) {
       await client.addMembership(identity.subjectDescriptor, group.descriptor);
     }
   });
-}
 
-export async function navigate(redirectUrl: string) {
-  const navService = await SDK.getService<IHostNavigationService>(
-    CommonServiceIds.HostNavigationService
-  );
-  navService.navigate(redirectUrl);
+  return group;
 }

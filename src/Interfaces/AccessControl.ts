@@ -38,7 +38,7 @@ export interface AccessControlEntry {
   /**
    * The descriptor for the user this AccessControlEntry applies to.
    */
-  descriptor?: IdentityDescriptor;
+  descriptor?: IdentityDescriptor | string;
 
   /**
    * This value, when set, reports the inherited and effective information for the associated descriptor. This value is only set on AccessControlEntries returned by the QueryAccessControlList(s) call when its includeExtendedInfo parameter is set to true.
