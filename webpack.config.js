@@ -42,7 +42,7 @@ module.exports = {
       },
       {
         test: /\.woff$/,
-        type: 'asset/resource',
+        type: 'asset/inline',
       },
       {
         test: /\.html$/,
