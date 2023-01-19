@@ -3,11 +3,17 @@
   "manifestVersion": 1,
   "id": "repository-advanced-creator",
   "publisher": "JasonWhalley",
-  "version": "0.0.20",
+  "version": "0.0.24",
   "name": "Repository Advanced Create",
   "description": "Create a Repository with supplemental groups",
   "categories": [
     "Azure Repos"
+  ],
+  "tags": [
+    "Azure DevOps Extensions",
+    "Repository",
+    "Create",
+    "Groups"
   ],
   "targets": [
     {
@@ -15,13 +21,32 @@
     }
   ],
   "icons": {
-    "default": "logo.png"
+    "default": "img/logo.png"
   },
+  "badges": [
+    {
+      "href": "https://github.com/JasonWhall/azure-devops-advanced-repository-creation",
+      "uri": "https://github.com/JasonWhall/azure-devops-advanced-repository-creation/actions/workflows/build.yaml/badge.svg",
+      "description": "Node CI"
+    }
+  ],
   "content": {
     "details": {
       "path": "overview.md"
+    },
+    "license": {
+      "path": "LICENSE"
     }
   },
+  "repository": {
+    "type": "git",
+    "uri": "https://github.com/JasonWhall/azure-devops-advanced-repository-creation"
+  },
+  "screenshots": [
+    {
+      "path": "img/panel-example.png"
+    }
+  ],
   "files": [
     {
       "path": "dist",
