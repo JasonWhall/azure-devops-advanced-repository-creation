@@ -132,6 +132,34 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
   private async create(): Promise<void> {
     this.setState({ loading: true });
 
+    const contributorGroups: GitContributor[] = [
+      {
+        type: 'Maintainers',
+        gitActions: [
+          'Administer',
+          'GenericRead',
+          'GenericContribute',
+          'ForcePush',
+          'CreateBranch',
+          'CreateTag',
+          'ManageNote',
+          'PolicyExempt',
+          'RenameRepository',
+          'EditPolicies',
+          'RemoveOthersLocks',
+          'ManagePermissions',
+          'PullRequestBypassPolicy',
+          'PullRequestContribute',
+        ],
+        identities: this.maintainers.value,
+      },
+      {
+        type: 'External Collaborators',
+        gitActions: ['GenericContribute', 'GenericRead', 'CreateBranch', 'PullRequestContribute'],
+        identities: this.collaborators.value,
+      },
+    ];
+
     const projectService = await SDK.getService<IProjectPageService>(
       CommonServiceIds.ProjectPageService
     );
@@ -150,34 +178,6 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
         this.state.createReadme,
         this.state.gitIgnoreSelection
       );
-
-      const contributorGroups: GitContributor[] = [
-        {
-          type: 'Maintainers',
-          gitActions: [
-            'Administer',
-            'GenericRead',
-            'GenericContribute',
-            'ForcePush',
-            'CreateBranch',
-            'CreateTag',
-            'ManageNote',
-            'PolicyExempt',
-            'RenameRepository',
-            'EditPolicies',
-            'RemoveOthersLocks',
-            'ManagePermissions',
-            'PullRequestBypassPolicy',
-            'PullRequestContribute',
-          ],
-          identities: this.maintainers.value,
-        },
-        {
-          type: 'External Collaborators',
-          gitActions: ['GenericContribute', 'GenericRead', 'CreateBranch', 'PullRequestContribute'],
-          identities: this.collaborators.value,
-        },
-      ];
 
       contributorGroups.forEach(async (contributor) => {
         contributor.group = await createGroup(contributor, this.state.repoName, projectId);
