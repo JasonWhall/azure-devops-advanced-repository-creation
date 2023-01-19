@@ -1,7 +1,5 @@
 import React from 'react';
-
 import { GitIgnoreOptions } from '../Data';
-
 import { Dropdown, DropdownExpandableButton } from 'azure-devops-ui/Dropdown';
 import { DropdownSelection } from 'azure-devops-ui/Utilities/DropdownSelection';
 import { IListBoxItem } from 'azure-devops-ui/ListBox';

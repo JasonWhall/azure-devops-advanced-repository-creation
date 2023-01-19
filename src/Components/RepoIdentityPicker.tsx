@@ -1,11 +1,7 @@
 import React from 'react';
 
 import { IdentityPicker, IIdentity, IPeoplePickerProvider } from 'azure-devops-ui/IdentityPicker';
-import {
-  IObservableArray,
-  IReadonlyObservableArray,
-  ObservableArray,
-} from 'azure-devops-ui/Core/Observable';
+import { IReadonlyObservableArray } from 'azure-devops-ui/Core/Observable';
 import { PeoplePickerProvider } from 'azure-devops-extension-api/Identities';
 import { FormItem } from 'azure-devops-ui/FormItem';
 
@@ -25,8 +21,6 @@ export class RepoIdentityPicker extends React.Component<
   IRepoIdentityPickerProps,
   IRepoIdentityPickerState
 > {
-  private selectedIdentities: IObservableArray<IIdentity> = new ObservableArray<IIdentity>([]);
-
   constructor(props: IRepoIdentityPickerProps) {
     super(props);
 

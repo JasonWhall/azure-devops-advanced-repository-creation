@@ -33,7 +33,7 @@ import {
 
 interface IPanelContentState {
   repoName: string;
-  loading: boolean; // Used to display spinner and lock submission
+  loading: boolean;
   errorOnCreate: boolean;
   errorMessage?: string;
   createReadme: boolean;
@@ -42,8 +42,8 @@ interface IPanelContentState {
 }
 
 class RepoPanelContent extends React.Component<{}, IPanelContentState> {
-  private selectedMaintainers = new ObservableArray<IIdentity>([]);
-  private selectedCollaborators = new ObservableArray<IIdentity>([]);
+  private maintainers = new ObservableArray<IIdentity>([]);
+  private collaborators = new ObservableArray<IIdentity>([]);
 
   constructor(props: {}) {
     super(props);
@@ -80,7 +80,7 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
             <GitRepoDropdown label='Repository type' />
             <TextField
               value={this.state.repoName}
-              onChange={(e, newValue) => this.setState({ repoName: newValue })}
+              onChange={(_e, newValue) => this.setState({ repoName: newValue })}
               placeholder='Enter a name for your Git repository'
               width={TextFieldWidth.auto}
               label='Repository name *'
@@ -89,34 +89,22 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
               label='Add a README'
               checked={this.state.createReadme}
               disabled={this.state.loading}
-              onChange={(e, checked) => this.setState({ createReadme: checked })}
+              onChange={(_e, checked) => this.setState({ createReadme: checked })}
             />
             <GitignoreDropdown onSelect={(_e, item) => this.setGitignoreSelection(item)} />
             <RepoIdentityPicker
               label='Maintainers'
-              onIdentitiesRemoved={(identities: IIdentity[]) =>
-                this.onIdentitiesRemoved(identities, this.selectedMaintainers)
-              }
-              onIdentityAdded={(identity: IIdentity) =>
-                this.onIdentityAdded(identity, this.selectedMaintainers)
-              }
-              onIdentityRemoved={(identity: IIdentity) =>
-                this.onIdentityRemoved(identity, this.selectedMaintainers)
-              }
-              selectedIdentities={this.selectedMaintainers}
+              onIdentitiesRemoved={(ids) => this.onIdentitiesRemoved(ids, this.maintainers)}
+              onIdentityAdded={(id) => this.onIdentityAdded(id, this.maintainers)}
+              onIdentityRemoved={(id) => this.onIdentityRemoved(id, this.maintainers)}
+              selectedIdentities={this.maintainers}
             />
             <RepoIdentityPicker
               label='External Collaborators'
-              onIdentitiesRemoved={(identities: IIdentity[]) =>
-                this.onIdentitiesRemoved(identities, this.selectedCollaborators)
-              }
-              onIdentityAdded={(identity: IIdentity) =>
-                this.onIdentityAdded(identity, this.selectedCollaborators)
-              }
-              onIdentityRemoved={(identity: IIdentity) =>
-                this.onIdentityRemoved(identity, this.selectedCollaborators)
-              }
-              selectedIdentities={this.selectedCollaborators}
+              onIdentitiesRemoved={(ids) => this.onIdentitiesRemoved(ids, this.collaborators)}
+              onIdentityAdded={(id) => this.onIdentityAdded(id, this.collaborators)}
+              onIdentityRemoved={(id) => this.onIdentityRemoved(id, this.collaborators)}
+              selectedIdentities={this.collaborators}
             />
             {(this.state.createReadme || this.state.gitIgnoreSelection) && (
               <span className='margin-16'>
@@ -148,10 +136,13 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
       CommonServiceIds.ProjectPageService
     );
 
-    // TODO: Check Project Id is found.
-    const projectId = await projectService.getProject().then((project) => project?.id || '');
-
     try {
+      const projectId = await projectService.getProject().then((project) => project?.id);
+
+      if (!projectId) {
+        throw new Error('Unable to Identify Project Id');
+      }
+
       const repository = await createRepository(this.state.repoName, projectId);
 
       await initializeRepository(
@@ -162,14 +153,29 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
 
       const contributorGroups: GitContributor[] = [
         {
-          type: 'Maintainer',
-          gitActions: ['Administer'],
-          identities: this.selectedMaintainers.value,
+          type: 'Maintainers',
+          gitActions: [
+            'Administer',
+            'GenericRead',
+            'GenericContribute',
+            'ForcePush',
+            'CreateBranch',
+            'CreateTag',
+            'ManageNote',
+            'PolicyExempt',
+            'RenameRepository',
+            'EditPolicies',
+            'RemoveOthersLocks',
+            'ManagePermissions',
+            'PullRequestBypassPolicy',
+            'PullRequestContribute',
+          ],
+          identities: this.maintainers.value,
         },
         {
           type: 'External Collaborators',
-          gitActions: ['GenericContribute', 'CreateBranch', 'PullRequestContribute'],
-          identities: this.selectedCollaborators.value,
+          gitActions: ['GenericContribute', 'GenericRead', 'CreateBranch', 'PullRequestContribute'],
+          identities: this.collaborators.value,
         },
       ];
 
@@ -182,6 +188,7 @@ class RepoPanelContent extends React.Component<{}, IPanelContentState> {
       this.setState({ loading: false });
       await this.finalise(repository.webUrl);
     } catch (err) {
+      // On failure, we try to extract the message to present as a messagebox
       let message = 'Unable to create repository';
 
       if (err instanceof Error) message = err.message;
