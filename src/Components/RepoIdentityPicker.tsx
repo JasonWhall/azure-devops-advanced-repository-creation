@@ -1,5 +1,4 @@
 import React from 'react';
-
 import { IdentityPicker, IIdentity, IPeoplePickerProvider } from 'azure-devops-ui/IdentityPicker';
 import { IReadonlyObservableArray } from 'azure-devops-ui/Core/Observable';
 import { PeoplePickerProvider } from 'azure-devops-extension-api/Identities';

@@ -41,7 +41,7 @@ interface IPanelContentState {
   defaultBranch: string;
 }
 
-class RepoPanelContent extends React.Component<{}, IPanelContentState> {
+export class RepoPanelContent extends React.Component<{}, IPanelContentState> {
   private maintainers = new ObservableArray<IIdentity>([]);
   private collaborators = new ObservableArray<IIdentity>([]);
 

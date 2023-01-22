@@ -163,7 +163,10 @@ export async function getSecurityNamespace(name: string): Promise<SecurityNamesp
   return match[0];
 }
 
-export async function createRepository(repoName: string, projectId: string) {
+export async function createRepository(
+  repoName: string,
+  projectId: string
+): Promise<GitRepository> {
   const client = getClient(GitClient);
 
   const options = {
