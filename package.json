@@ -48,7 +48,7 @@
     "eslint-config-prettier": "^8.6.0",
     "eslint-plugin-prettier": "^4.2.1",
     "eslint-plugin-react": "^7.32.1",
-    "jest-environment-jsdom": "^29.3.1",
+    "jest-environment-jsdom": "^29.4.1",
     "loader-utils": "^3.2.1",
     "prettier": "^2.8.3",
     "rimraf": "^4.1.2",
