@@ -3,7 +3,7 @@
   "manifestVersion": 1,
   "id": "repository-advanced-creator",
   "publisher": "JasonWhalley",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "name": "Advanced Repository Creator",
   "description": "Create a Repository with supplemental groups",
   "categories": [
@@ -50,6 +50,10 @@
   "files": [
     {
       "path": "dist",
+      "addressable": true
+    },
+    {
+      "path": "img",
       "addressable": true
     }
   ],
