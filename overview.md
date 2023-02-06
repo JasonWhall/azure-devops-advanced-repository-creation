@@ -33,21 +33,8 @@ By default a set of permissions are assigned to the groups created. These can be
 
 ### Maintainers Group
 
-- Administer
-- Force push (rewrite history, delete branches and tags)
-- Create branch
-- Create tags
-- Manage notes
-- Bypass policies when pushing
-- Rename repository
-- Edit policies
-- Remove others' locks
-- Manage permissions
-- Contribute to pull requests
-- Bypass policies when completing pull requests
+![Maintainer Permissions](./img/maintainer-permissions.png)
 
 ### External Collaborators Group
 
-- Contribute
-- Create branch
-- Contribute to pull requests
+![Collaborator Permissions](./img/collaborators-permissions.png)
