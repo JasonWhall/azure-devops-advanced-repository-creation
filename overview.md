@@ -2,7 +2,7 @@
 
 Option to create a repo with supplemental groups for maintainers and external collaborators to enforce good practice on repos
 
-![Example](./img/panel-example.png)
+![Example](img/panel-example.png)
 
 ## What does it do?
 
@@ -12,7 +12,7 @@ Option to create a repo with supplemental groups for maintainers and external co
 
 - Create a group called `<Repository Name> External Collaborators` that are outside collaborators for the repository
 
-![Groups](./img/groups-example.png)
+![Groups](img/groups-example.png)
 
 - Assigns the chosen users to the Maintainer or Collaborator group.
 
@@ -33,8 +33,8 @@ By default a set of permissions are assigned to the groups created. These can be
 
 ### Maintainers Group
 
-![Maintainer Permissions](./img/maintainer-permissions.png)
+![Maintainer Permissions](img/maintainer-permissions.png)
 
 ### External Collaborators Group
 
-![Collaborator Permissions](./img/collaborators-permissions.png)
+![Collaborator Permissions](img/collaborators-permissions.png)

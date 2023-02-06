@@ -3,8 +3,8 @@
   "manifestVersion": 1,
   "id": "repository-advanced-creator",
   "publisher": "JasonWhalley",
-  "version": "0.1.0",
-  "name": "Repository Advanced Create",
+  "version": "0.1.1",
+  "name": "Advanced Repository Creator",
   "description": "Create a Repository with supplemental groups",
   "categories": [
     "Azure Repos"
@@ -51,6 +51,11 @@
     {
       "path": "dist",
       "addressable": true
+    },
+    {
+      "path": "img",
+      "addressable": true
     }
-  ]
+  ],
+  "public": true
 }

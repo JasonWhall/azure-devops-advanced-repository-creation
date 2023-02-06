@@ -4,8 +4,6 @@
 
 [![Node CI](https://github.com/JasonWhall/azure-devops-advanced-repository-creation/actions/workflows/build.yaml/badge.svg)](https://github.com/JasonWhall/azure-devops-advanced-repository-creation/actions/workflows/build.yaml)
 
-🚧 - Under Construction
-
 An Azure DevOps Extension to Create a Repository with supplemental groups for maintainers and external collaborators.
 
 ![Example](./img/panel-example.png)
