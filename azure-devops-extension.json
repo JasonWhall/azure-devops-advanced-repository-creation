@@ -52,5 +52,6 @@
       "path": "dist",
       "addressable": true
     }
-  ]
+  ],
+  "public": true
 }
