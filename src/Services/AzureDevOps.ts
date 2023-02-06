@@ -125,17 +125,25 @@ export async function addGitPermissions(
     // TODO: Improve hack?
     const sid = atob(contributor.group?.descriptor.split('.', 2)[1] || '');
 
-    const gitPermissions = gitNamespace.actions
+    // Iterate over each assigned action bit to sum and return a final permission value
+    const calculatedPermission = gitNamespace.actions
       .filter((action) => contributor.gitActions.includes(action.name || ''))
-      .map(
-        (action): AccessControlEntry => ({
-          descriptor: `Microsoft.TeamFoundation.Identity;${sid}`,
-          allow: action.bit,
-          deny: 0,
-        })
-      );
+      .map((action) => action.bit || 0)
+      .reduce((acc, current) => acc + current);
 
-    aceEntries.push(...gitPermissions);
+    const gitPermission: AccessControlEntry = {
+      descriptor: `Microsoft.TeamFoundation.Identity;${sid}`,
+      allow: calculatedPermission,
+      deny: 0,
+      extendedInfo: {
+        effectiveAllow: calculatedPermission,
+        effectiveDeny: 0,
+        inheritedAllow: calculatedPermission,
+        inheritedDeny: 0,
+      },
+    };
+
+    aceEntries.push(gitPermission);
   });
 
   const aceList: AccessControlList = {

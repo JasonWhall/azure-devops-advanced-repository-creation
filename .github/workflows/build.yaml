@@ -5,6 +5,9 @@ on:
     branches:
       - main
       - "releases/**"
+  pull_request:
+    branches:
+      - main
 
 jobs:
   build:
@@ -20,6 +23,6 @@ jobs:
 
       - name: npm install, build, and test
         run: |
-          npm install
+          npm clean-install
           npm run build
           npm run test
