@@ -4,7 +4,7 @@
   "id": "repository-advanced-creator",
   "publisher": "JasonWhalley",
   "version": "0.1.0",
-  "name": "Repository Advanced Create",
+  "name": "Advanced Repository Creator",
   "description": "Create a Repository with supplemental groups",
   "categories": [
     "Azure Repos"
