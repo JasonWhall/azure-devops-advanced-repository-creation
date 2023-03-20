@@ -50,7 +50,7 @@
     "eslint-plugin-react": "^7.32.2",
     "jest-environment-jsdom": "^29.5.0",
     "loader-utils": "^3.2.1",
-    "prettier": "^2.8.4",
+    "prettier": "^2.8.5",
     "rimraf": "^4.4.0",
     "sass": "^1.59.2",
     "sass-loader": "^13.2.1",
