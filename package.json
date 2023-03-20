@@ -53,7 +53,7 @@
     "prettier": "^2.8.4",
     "rimraf": "^4.4.0",
     "sass": "^1.59.2",
-    "sass-loader": "^13.2.0",
+    "sass-loader": "^13.2.1",
     "style-loader": "^3.3.1",
     "tfx-cli": "^0.14.0",
     "ts-jest": "^29.0.5",
