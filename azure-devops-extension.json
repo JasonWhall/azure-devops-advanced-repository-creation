@@ -3,7 +3,7 @@
   "manifestVersion": 1,
   "id": "repository-advanced-creator",
   "publisher": "JasonWhalley",
-  "version": "0.1.1",
+  "version": "0.1.3",
   "name": "Advanced Repository Creator",
   "description": "Create a Repository with supplemental groups",
   "categories": [
