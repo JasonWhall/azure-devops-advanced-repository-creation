@@ -51,7 +51,7 @@
     "jest-environment-jsdom": "^29.5.0",
     "loader-utils": "^3.2.1",
     "prettier": "^2.8.7",
-    "rimraf": "^4.4.1",
+    "rimraf": "^5.0.0",
     "sass": "^1.60.0",
     "sass-loader": "^13.2.1",
     "style-loader": "^3.3.2",
